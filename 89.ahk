@@ -36,13 +36,12 @@ F1::
     WHR.Open("POST", WebAppURL, true)
     WHR.SetRequestHeader("Content-Type", "application/json")
     WHR.Send(Body)
-    WHR.WaitForResponse()
-    ResponseText := WHR.ResponseText
-    MsgBox(ResponseText)
+    ;WHR.WaitForResponse()
+    ;ResponseText := WHR.ResponseText
+    ;MsgBox(ResponseText)
 }
 
 removeEmoji(str) {
-    ; Remove emoji characters and shorthand
     Return Trim(RegExReplace(str, "(:\w+:|[\xA9\xAE\x{2000}-\x{3300}\x{1F000}-\x{1FBFF}]+)\h*"))
 }
 
@@ -58,8 +57,6 @@ cleanJSON(str) {
 	str := StrReplace(str, "+", " ")
     str := RegExReplace(str, "[\x00-\x1F]", "")  ; Remove control characters (ASCII 0–31)
 
-    ; Optionally trim excessive spaces (optional)
-	MsgBox(str)
     Return Trim(str)
 }
 
