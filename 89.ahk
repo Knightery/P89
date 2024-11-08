@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
+#SingleInstance Off
 
-F1::
 {
     ; Get URL
     Send "^l"
@@ -8,7 +8,6 @@ F1::
     Send "^c"
     Sleep 50
     URL := A_Clipboard
-    Send "{Esc}"
     MouseClick "left", 1000, 1000
 
     ; Get PageText
@@ -19,11 +18,11 @@ F1::
     PageText := A_Clipboard
 
     ; Clean PageText (remove emojis, escape characters)
-    PageText := removeEmoji(PageText)
-    PageText := cleanJSON(PageText)
+	PageText := removeEmoji(PageText)
+	PageText := cleanJSON(PageText)
 
     ; Define the Web App URL for Google Apps Script
-    WebAppURL := "https://script.google.com/macros/s/AKfycbxuU-CvrTwhyYdKjpc-BshmUMNh9Xbq3ajWoQXJV89XIAHOsx12O2E2TILas7iAehEnlg/exec"
+    WebAppURL := "https://script.google.com/macros/s/AKfycbyq-w2-Quw00mJYEw3hkRfjkvXlWbv6WXbmwDQnecruUpcsei6CNnGiK0GgPcfZ0dOcsg/exec"
 
     ; Escape special characters for JSON
     URL := StrReplace(URL, '"', '\"')
@@ -33,16 +32,14 @@ F1::
 
     ; Send POST request
     WHR := ComObject("WinHttp.WinHttpRequest.5.1")
-    WHR.Open("POST", WebAppURL, true)
+    WHR.Open("POST", WebAppURL, false)
     WHR.SetRequestHeader("Content-Type", "application/json")
     WHR.Send(Body)
-    ;WHR.WaitForResponse()
-    ;ResponseText := WHR.ResponseText
-    ;MsgBox(ResponseText)
+	MsgBox(Body)
 }
 
 removeEmoji(str) {
-    Return Trim(RegExReplace(str, "(:\w+:|[\xA9\xAE\x{2000}-\x{3300}\x{1F000}-\x{1FBFF}]+)\h*"))
+    Return Trim(RegExReplace(str, "(:\w+:|[\xA9\xAE\x{2000}-\x{3300}\x{1F000}-\x{1FBFF}]+)\h*", " "))
 }
 
 cleanJSON(str) {
@@ -56,7 +53,6 @@ cleanJSON(str) {
 	str := StrReplace(str, ")", " ")
 	str := StrReplace(str, "+", " ")
     str := RegExReplace(str, "[\x00-\x1F]", "")  ; Remove control characters (ASCII 0–31)
-
     Return Trim(str)
 }
 
