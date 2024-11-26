@@ -1,6 +1,5 @@
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import re
 import subprocess
@@ -19,7 +18,6 @@ driver = uc.Chrome()
 
 try:
     for posting_url in posting_urls:
-        
         # Extract the city from the URL (e.g., "boston" or "new-york")
         city_match = re.search(r"/posts/([^/]+)/female-escorts", posting_url)
         city = city_match.group(1)

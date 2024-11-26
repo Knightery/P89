@@ -1,6 +1,6 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Off
-
+F1::
 {
     ; Get URL
     Send "^l"
@@ -14,7 +14,6 @@
     Send "^a"
     Sleep 50
     Send "^c"
-    Sleep 50
     PageText := A_Clipboard
 
     ; Clean PageText (remove emojis, escape characters)
@@ -22,7 +21,7 @@
 	PageText := cleanJSON(PageText)
 
     ; Define the Web App URL for Google Apps Script
-    WebAppURL := "https://script.google.com/macros/s/AKfycbyq-w2-Quw00mJYEw3hkRfjkvXlWbv6WXbmwDQnecruUpcsei6CNnGiK0GgPcfZ0dOcsg/exec"
+    WebAppURL := "https://script.google.com/macros/s/AKfycbz6J-pC0yip_5l7U_rdpanmr2fi19NvRvMbRGFiROxW0OzinP3RFgNYGzwjA8393wjY4g/exec"
 
     ; Escape special characters for JSON
     URL := StrReplace(URL, '"', '\"')
@@ -35,7 +34,7 @@
     WHR.Open("POST", WebAppURL, false)
     WHR.SetRequestHeader("Content-Type", "application/json")
     WHR.Send(Body)
-	MsgBox(Body)
+	ExitApp
 }
 
 removeEmoji(str) {
@@ -53,6 +52,7 @@ cleanJSON(str) {
 	str := StrReplace(str, ")", " ")
 	str := StrReplace(str, "+", " ")
     str := RegExReplace(str, "[\x00-\x1F]", "")  ; Remove control characters (ASCII 0–31)
+	str := RegExReplace(str, "\s{2,}", " ")
     Return Trim(str)
 }
 
