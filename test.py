@@ -5,6 +5,9 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import re
 import requests
+from difflib import SequenceMatcher
+import json
+from pathlib import Path
 
 def remove_emoji(text):
     """Remove emojis and special characters from text"""
@@ -38,8 +41,33 @@ def clean_text(text):
     
     return text.strip()
 
-def process_page(driver):
-    """Process the current page and send data to Google Apps Script"""
+def calculate_similarity(text1, text2):
+    """Calculate similarity ratio between two texts"""
+    return SequenceMatcher(None, text1, text2).ratio()
+
+def load_saved_texts():
+    """Load previously saved texts from file"""
+    try:
+        with open('saved_texts.json', 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+def save_texts(texts):
+    """Save texts to file"""
+    with open('saved_texts.json', 'w') as f:
+        json.dump(texts, f)
+
+def is_similar_to_existing(new_text, saved_texts, similarity_threshold=0.9):
+    """Check if new text is similar to any existing texts"""
+    for entry in saved_texts:
+        if calculate_similarity(new_text, entry['pageText']) >= similarity_threshold:
+            print(f"Similar content found. Not sending to webapp. Similar to URL: {entry['url']}")
+            return True
+    return False
+
+def process_page(driver, saved_texts):
+    """Process the current page and send data to Google Apps Script if content is unique enough"""
     # Get URL using Selenium
     current_url = driver.current_url
     
@@ -48,25 +76,36 @@ def process_page(driver):
     # Clean the text
     page_text = remove_emoji(page_text)
     page_text = clean_text(page_text)
+
+    print(f"Processing URL: {current_url}")
     
-    # Prepare and send the data to Google Apps Script
-    webapp_url = "https://script.google.com/macros/s/AKfycbz6J-pC0yip_5l7U_rdpanmr2fi19NvRvMbRGFiROxW0OzinP3RFgNYGzwjA8393wjY4g/exec"
+    # Check for similarity with existing texts
+    if not is_similar_to_existing(page_text, saved_texts):
+        # Prepare and send the data to Google Apps Script
+        webapp_url = "https://script.google.com/macros/s/AKfycbxWgMjGw9fQ7cJ43SJNVXeDEf1tZzCnExQLvNuo0fyaZh2XRkwuaVknZLI-hnuO0-nRnw/exec"
+        
+        payload = {
+            "url": current_url,
+            "pageText": page_text
+        }
+        
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            response = requests.post(webapp_url, json=payload, headers=headers)
+            if response.status_code != 200:
+                print(f"Error sending data: Status code {response.status_code}")
+            else:
+                # Save new text only if successfully sent to webapp
+                saved_texts.append(payload)
+                save_texts(saved_texts)
+                print(f"Successfully processed and saved: {current_url}")
+        except Exception as e:
+            print(f"Error sending data: {e}")
     
-    payload = {
-        "url": current_url,
-        "pageText": page_text
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        response = requests.post(webapp_url, json=payload, headers=headers)
-        if response.status_code != 200:
-            print(f"Error sending data: Status code {response.status_code}")
-    except Exception as e:
-        print(f"Error sending data: {e}")
+    return saved_texts
 
 max_age = 25
 
@@ -79,12 +118,8 @@ posting_urls = [
     f"https://skipthegames.com/posts/dallas/female-escorts?ageMin=19&ageMax={max_age}&area[]=BOS&heightType=f&psizeType=in&weightType=l",
 ]
 
-options = uc.ChromeOptions()
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--window-size=1920,1080')
-
-driver = uc.Chrome(options=options)
+driver = uc.Chrome()
+saved_texts = load_saved_texts()
 
 try:
     for posting_url in posting_urls:
@@ -95,14 +130,7 @@ try:
         # Navigate to the provided URL
         driver.get(posting_url)
         sleep(2) # Change depending on internet speed
-        
-        # Click the "Single Photo" button using JavaScript
-        driver.execute_script("""
-            var element = document.getElementById('radio_clsfd_display_mode_single');
-            if(element) element.click();
-        """)
-        sleep(1)
-        
+
         # Collect all ad links
         ad_links = driver.find_elements(By.CSS_SELECTOR, f"a[href^='/posts/{city}/female-escorts']")
         ad_urls = set()
@@ -117,9 +145,9 @@ try:
         # Visit each unique ad page
         for ad_url in ad_urls:
             driver.get(ad_url)
+            sleep(2)  # Change depending on internet speed
+            saved_texts = process_page(driver, saved_texts)
             sleep(1)  # Change depending on internet speed
-            process_page(driver)
-            sleep(0.5)  # Change depending on internet speed
 
 except Exception as e:
     print("An error occurred:", e)
