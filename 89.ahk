@@ -1,6 +1,5 @@
 ﻿#Requires AutoHotkey v2.0
 #SingleInstance Off
-F1::
 {
     ; Get URL
     Send "^l"

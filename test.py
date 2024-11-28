@@ -4,17 +4,15 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import re
-import json
 import requests
 
 def remove_emoji(text):
     """Remove emojis and special characters from text"""
-    # Remove emojis and special characters
     emoji_pattern = re.compile("["
         u"\U0001F600-\U0001F64F"  # emoticons
         u"\U0001F300-\U0001F5FF"  # symbols & pictographs
         u"\U0001F680-\U0001F6FF"  # transport & map symbols
-        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U0001F1E0-\U0001F1FF"  # flags 
         u"\U00002702-\U000027B0"
         u"\U000024C2-\U0001F251"
         "]+", flags=re.UNICODE)
@@ -45,23 +43,7 @@ def process_page(driver):
     # Get URL using Selenium
     current_url = driver.current_url
     
-    # Get page text using Selenium
-    actions = ActionChains(driver)
-    actions.key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
-    sleep(0.05)
-    actions.key_down(Keys.CONTROL).send_keys('c').key_up(Keys.CONTROL).perform()
-    sleep(0.05)
-    
-    # Get text from clipboard using Selenium's execute_script
-    page_text = driver.execute_script("""
-        const textarea = document.createElement('textarea');
-        document.body.appendChild(textarea);
-        textarea.focus();
-        document.execCommand('paste');
-        const text = textarea.value;
-        document.body.removeChild(textarea);
-        return text;
-    """)
+    page_text = driver.execute_script("return document.body.innerText")
     
     # Clean the text
     page_text = remove_emoji(page_text)
@@ -86,17 +68,23 @@ def process_page(driver):
     except Exception as e:
         print(f"Error sending data: {e}")
 
+max_age = 25
+
 # List of posting URLs for different cities
 posting_urls = [
-    "https://skipthegames.com/posts/boston/female-escorts?ageMin=19&ageMax=21&area[]=BOS&heightType=f&psizeType=in&weightType=l",
-    "https://skipthegames.com/posts/new-york-city/female-escorts?ageMin=19&ageMax=211&area[]=NY&heightType=f&psizeType=in&weightType=l",
-    "https://skipthegames.com/posts/philadelphia/female-escorts?ageMin=19&ageMax=21&area[]=BOS&heightType=f&psizeType=in&weightType=l",
-    "https://skipthegames.com/posts/houston/female-escorts?ageMin=19&ageMax=21&area[]=BOS&heightType=f&psizeType=in&weightType=l",
-    "https://skipthegames.com/posts/dallas/female-escorts?ageMin=19&ageMax=21&area[]=BOS&heightType=f&psizeType=in&weightType=l",
+    f"https://skipthegames.com/posts/boston/female-escorts?ageMin=19&ageMax={max_age}&area[]=BOS&heightType=f&psizeType=in&weightType=l",
+    f"https://skipthegames.com/posts/new-york-city/female-escorts?ageMin=19&ageMax={max_age}1&area[]=NY&heightType=f&psizeType=in&weightType=l",
+    f"https://skipthegames.com/posts/philadelphia/female-escorts?ageMin=19&ageMax={max_age}&area[]=BOS&heightType=f&psizeType=in&weightType=l",
+    f"https://skipthegames.com/posts/houston/female-escorts?ageMin=19&ageMax={max_age}&area[]=BOS&heightType=f&psizeType=in&weightType=l",
+    f"https://skipthegames.com/posts/dallas/female-escorts?ageMin=19&ageMax={max_age}&area[]=BOS&heightType=f&psizeType=in&weightType=l",
 ]
 
-# Initialize Chrome Driver
-driver = uc.Chrome(headless=True)
+options = uc.ChromeOptions()
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--window-size=1920,1080')
+
+driver = uc.Chrome(options=options)
 
 try:
     for posting_url in posting_urls:
@@ -106,11 +94,13 @@ try:
         
         # Navigate to the provided URL
         driver.get(posting_url)
-        sleep(1)  # Allow time for the page to load
+        sleep(2) # Change depending on internet speed
         
-        # Click the "Single Photo" button
-        single_photo_button = driver.find_element(By.ID, "radio_clsfd_display_mode_single")
-        single_photo_button.click()
+        # Click the "Single Photo" button using JavaScript
+        driver.execute_script("""
+            var element = document.getElementById('radio_clsfd_display_mode_single');
+            if(element) element.click();
+        """)
         sleep(1)
         
         # Collect all ad links
@@ -121,15 +111,15 @@ try:
             ad_url = ad.get_attribute("href")
             if ad_url not in ad_urls:
                 ad_urls.add(ad_url)
-            if len(ad_urls) >= 30:  # Limit to 30 listings
+            if len(ad_urls) >= 30:  # Scrapes 30 at a time
                 break
                 
         # Visit each unique ad page
         for ad_url in ad_urls:
             driver.get(ad_url)
-            sleep(2)  # Wait for page to load
+            sleep(1)  # Change depending on internet speed
             process_page(driver)
-            sleep(1.5)  # Wait between processing pages
+            sleep(0.5)  # Change depending on internet speed
 
 except Exception as e:
     print("An error occurred:", e)
